@@ -1,0 +1,353 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Anonim Grup Sohbet</title>
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    html, body {
+      margin: 0;
+      padding: 0;
+      font-family: 'Segoe UI', sans-serif;
+      background-color: #121212;
+      color: #f1f1f1;
+      height: 100%;
+    }
+
+    #username-container {
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      height: 100dvh;
+      padding: 20px;
+      background-color: #1e1e1e;
+    }
+
+    #username-input {
+      padding: 12px;
+      font-size: 16px;
+      border: none;
+      border-radius: 8px;
+      margin-bottom: 12px;
+      width: 100%;
+      max-width: 300px;
+      background: #2c2c2c;
+      color: #fff;
+    }
+
+    #username-btn {
+      padding: 12px 20px;
+      font-size: 16px;
+      border: none;
+      border-radius: 8px;
+      background: linear-gradient(135deg, #00c6ff, #0072ff);
+      color: white;
+      cursor: pointer;
+    }
+
+    #chat-container {
+      display: none;
+      flex-direction: column;
+      height: 100dvh;
+    }
+
+    #user-count {
+      padding: 10px;
+      background: #1a1a1a;
+      font-size: 14px;
+      color: #ccc;
+      text-align: center;
+      border-bottom: 1px solid #333;
+    }
+
+    #messages {
+      flex: 1;
+      list-style: none;
+      overflow-y: auto;
+      padding: 15px;
+      margin: 0;
+      scroll-behavior: smooth;
+    }
+
+    .message {
+      display: flex;
+      margin-bottom: 16px;
+    }
+
+    .avatar {
+      width: 38px;
+      height: 38px;
+      border-radius: 50%;
+      background: var(--avatar-color);
+      color: white;
+      font-weight: bold;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-right: 10px;
+      flex-shrink: 0;
+    }
+
+    .content {
+      background: #1f1f1f;
+      padding: 10px 14px;
+      border-radius: 10px;
+      max-width: 75%;
+      word-wrap: break-word;
+    }
+
+    .username {
+      font-weight: bold;
+      font-size: 14px;
+      margin-bottom: 4px;
+    }
+
+    #form {
+      display: flex;
+      padding: 10px;
+      background: #1b1b1b;
+      border-top: 1px solid #333;
+      gap: 10px;
+    }
+
+    #input {
+      flex: 1;
+      padding: 12px;
+      font-size: 16px;
+      border: none;
+      border-radius: 8px;
+      background: #2b2b2b;
+      color: #f1f1f1;
+    }
+
+    #form button {
+      padding: 12px 16px;
+      font-size: 16px;
+      border: none;
+      border-radius: 8px;
+      background: #00e676;
+      color: black;
+      font-weight: bold;
+      cursor: pointer;
+    }
+
+    #emoji-btn {
+      font-size: 22px;
+      background: #222;
+      border: none;
+      border-radius: 8px;
+      padding: 0 10px;
+      color: #fff;
+      cursor: pointer;
+    }
+
+    #emoji-picker {
+      display: none;
+      flex-wrap: wrap;
+      background: #222;
+      padding: 10px;
+      border-radius: 12px;
+      margin: 5px 10px;
+      gap: 8px;
+      max-height: 120px;
+      overflow-y: auto;
+    }
+
+    #emoji-picker.active {
+      display: flex;
+    }
+
+    .emoji {
+      background: #444;
+      border: none;
+      font-size: 24px;
+      padding: 6px 10px;
+      border-radius: 8px;
+      cursor: pointer;
+    }
+
+    .emoji:hover {
+      background: #666;
+    }
+
+    @media (max-width: 600px) {
+      .content {
+        max-width: 85%;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <div id="username-container">
+    <h2>Anonim Sohbete Katıl</h2>
+    <input id="username-input" placeholder="Bir isim yaz..." />
+    <button id="username-btn">Başla</button>
+  </div>
+
+  <div id="chat-container">
+    <div id="user-count">0 kullanıcı çevrimiçi</div>
+    <ul id="messages"></ul>
+    <form id="form">
+      <button type="button" id="emoji-btn">😊</button>
+      <input id="input" autocomplete="off" placeholder="Mesaj yaz..." />
+      <button type="submit">Gönder</button>
+    </form>
+    <div id="emoji-picker">
+      <button class="emoji">😀</button>
+      <button class="emoji">😂</button>
+      <button class="emoji">😍</button>
+      <button class="emoji">😎</button>
+      <button class="emoji">🤩</button>
+      <button class="emoji">😜</button>
+      <button class="emoji">👍</button>
+      <button class="emoji">🔥</button>
+      <button class="emoji">💥</button>
+      <button class="emoji">🌈</button>
+    </div>
+  </div>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script>
+    const socket = io();
+    const usernameContainer = document.getElementById('username-container');
+    const usernameInput = document.getElementById('username-input');
+    const usernameBtn = document.getElementById('username-btn');
+    const chatContainer = document.getElementById('chat-container');
+    const messages = document.getElementById('messages');
+    const form = document.getElementById('form');
+    const input = document.getElementById('input');
+    const emojiBtn = document.getElementById('emoji-btn');
+    const emojiPicker = document.getElementById('emoji-picker');
+
+    let username = null;
+    let userColor = null;
+    let replyTo = null;
+
+    function getRandomColor() {
+      const colors = ['#e91e63', '#9c27b0', '#673ab7', '#3f51b5', '#2196f3', '#03a9f4', '#00bcd4', '#009688', '#4caf50', '#8bc34a', '#cddc39', '#ffeb3b', '#ffc107', '#ff9800', '#ff5722', '#795548'];
+      return colors[Math.floor(Math.random() * colors.length)];
+    }
+
+    function parseEmojis(text) {
+      const emojiMap = {
+        ':)': '😊', ':(': '☹️', ':D': '😃', '<3': '❤️', ':P': '😜', ':o': '😮', ':|': '😐', ':*': '😘',
+      };
+      for (const code in emojiMap) {
+        const re = new RegExp(code.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g');
+        text = text.replace(re, emojiMap[code]);
+      }
+      return text;
+    }
+
+    function showMessage(data) {
+      const item = document.createElement('li');
+      item.classList.add('message');
+
+      const avatar = document.createElement('div');
+      avatar.classList.add('avatar');
+      avatar.style.setProperty('--avatar-color', data.color);
+      avatar.textContent = data.username.charAt(0).toUpperCase();
+
+      const content = document.createElement('div');
+      content.classList.add('content');
+
+      const name = document.createElement('div');
+      name.classList.add('username');
+      name.style.color = data.color;
+      name.textContent = data.username;
+      content.appendChild(name);
+
+      if (data.replyTo) {
+        const reply = document.createElement('div');
+        reply.style.fontSize = '13px';
+        reply.style.opacity = '0.7';
+        reply.style.borderLeft = '3px solid ' + data.replyTo.color;
+        reply.style.paddingLeft = '8px';
+        reply.style.marginBottom = '4px';
+        reply.textContent = `${data.replyTo.username}: ${data.replyTo.text}`;
+        content.appendChild(reply);
+      }
+
+      const messageText = document.createElement('div');
+      messageText.textContent = data.text;
+      content.appendChild(messageText);
+
+      item.appendChild(avatar);
+      item.appendChild(content);
+      messages.appendChild(item);
+      messages.scrollTop = messages.scrollHeight;
+
+      content.onclick = () => {
+        replyTo = {
+          username: data.username,
+          text: data.text,
+          color: data.color
+        };
+        input.placeholder = `Yanıtla: ${data.username}`;
+        input.focus();
+      };
+    }
+
+    emojiBtn.addEventListener('click', () => {
+      emojiPicker.classList.toggle('active');
+    });
+
+    document.querySelectorAll('.emoji').forEach(btn => {
+      btn.onclick = () => {
+        input.value += btn.textContent;
+        input.focus();
+      };
+    });
+
+    usernameBtn.onclick = () => {
+      const name = usernameInput.value.trim();
+      if (!name) return alert('İsim gerekli!');
+      username = name;
+      userColor = getRandomColor();
+      socket.emit('user joined', { username });
+      usernameContainer.style.display = 'none';
+      chatContainer.style.display = 'flex';
+      input.focus();
+    };
+
+    form.onsubmit = (e) => {
+      e.preventDefault();
+      const msg = input.value.trim();
+      if (!msg) return;
+      const messageData = {
+        username,
+        color: userColor,
+        text: parseEmojis(msg),
+        replyTo: replyTo
+      };
+      socket.emit('chat message', messageData);
+      input.value = '';
+      input.placeholder = 'Mesaj yaz...';
+      replyTo = null;
+    };
+
+    socket.on('chat message', showMessage);
+
+    socket.on('chat history', (msgs) => {
+      msgs.forEach(showMessage);
+    });
+
+    socket.on('user list', (users) => {
+      document.getElementById('user-count').textContent =
+        `${users.length} kişi çevrimiçi: ${users.join(', ')}`;
+    });
+
+    input.addEventListener('focus', () => {
+      setTimeout(() => {
+        messages.scrollTop = messages.scrollHeight;
+      }, 300);
+    });
+  </script>
+</body>
+</html>
