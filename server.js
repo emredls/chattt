@@ -40,8 +40,9 @@ io.on('connection', (socket) => {
     const newMsg = { ...data, timestamp: now };
     messages.push(newMsg);
 
-    // 6 saatten eski mesajları sil
-    messages = messages.filter(msg => now - msg.timestamp < 6 * 60 * 60 * 1000);
+    if (messages.length > 50) {
+    messages = messages.slice(-50);
+    }
 
     // Dosyaya kaydet
     fs.writeFileSync(MESSAGE_FILE, JSON.stringify(messages, null, 2));
